@@ -13,7 +13,7 @@ from pyzbar.pyzbar import decode
 import string
 
 # File extensions that are scanned and logged
-INPUT_FILE_TYPES = ['.jpg', '.jpeg', '.JPG', '.JPEG']
+INPUT_FILE_TYPES = ['.jpg', '.jpeg', '.JPG', '.JPEG', '.tif', '.TIF', '.TIFF', '.tiff']
 # File type extensions that are logged when filename matches a scanned input file
 ARCHIVE_FILE_TYPES = ['.CR2', '.cr2', '.RAW', '.raw', '.NEF', '.nef', '.DNG', '.dng']
 # Barcode symbologies accepted, others ignored
@@ -149,6 +149,8 @@ ap.add_argument("-s", "--source", required=True,
     help="Path to the directory that contains the images to be analyzed.")
 ap.add_argument("-p", "--project", required=False, choices=PROJECT_IDS,
     help="Project name for filtering in database")
+ap.add_argument("-d", "--default_prefix", required=False,
+    help="Barcode prefix string which will be used when multiple barcodes are found.")
 ap.add_argument("-b", "--batch", required=False,
     help="Flags written to batch_flags, can be used for filtering downstream data.")
 ap.add_argument("-o", "--output", nargs='?', default='primary', const='secondary',
@@ -159,7 +161,7 @@ ap.add_argument("-o", "--output", nargs='?', default='primary', const='secondary
 ap.add_argument("-n", "--no_rename", required=False, action='store_true',
     help="Files will not be renamed, only log file generated.")
 ap.add_argument("-c", "--code", required=False,
-    help="Collection or herbarium code prepended to barcode values.")
+    help="Collection or herbarium code which will be prepended to barcode values.")
 ap.add_argument("-v", "--verbose", required=False, action='store_true',
     help="Detailed output for each file processed.")
 ap.add_argument("-j", "--jpeg_rename", nargs='?', default=False, const=JPG_RENAME_STRING,
@@ -324,6 +326,16 @@ def get_barcodes(file_path=None):
         print('No barcodes found:', file_path)
         return None
 
+def get_default_barcode(barcodes=None, default_prefix=None):
+    if default_prefix:
+        # return first barcode which matches default prefix
+        # if no match, return first barcode
+        return barcodes[0]
+    else:
+        # return first barcode
+        return barcodes[0]
+
+
 def walk(path=None):
     global files_analyzed, renames_failed, missing_barcodes, files_processed
     for root, dirs, files in os.walk(path):
@@ -422,24 +434,26 @@ def walk(path=None):
                         #file_uuid=uuid, file_creation_time=file_creation_time, file_hash=file_hash,
                         #derived_from_file=derived_from_file, derived_from_uuid=derived_from_uuid
                         )
-print('scanning:', batch_path)
-walk(path=batch_path)
 
-# Close CSV log file
-csvfile.close()
+if __name__ == "__main__":
+    print('scanning:', batch_path)
+    walk(path=batch_path)
 
-analysis_end_time = datetime.now()
+    # Close CSV log file
+    csvfile.close()
 
-print('Started:', analysis_start_time)
-print('Completed:', analysis_end_time)
-# files_analyzed is the total number of files encountered in directory which is scanned
-print('Files analyzed:', files_analyzed)
-# files_processed is number of files which match the expected extensions for image files
-print('Files processed:', files_processed)
-print('Renames attempted:', renames_attempted)
-print('Renames failed:', renames_failed, '({:.1%})'.format(renames_failed/renames_attempted))
-print('Missing barcodes:', missing_barcodes, '({:.1%})'.format(missing_barcodes/files_analyzed))
-print('Duration:', analysis_end_time - analysis_start_time)
-if files_analyzed > 0:
-    print('Time per file:', (analysis_end_time - analysis_start_time) / files_analyzed)
-print('Report written to:', log_file_path)
+    analysis_end_time = datetime.now()
+
+    print('Started:', analysis_start_time)
+    print('Completed:', analysis_end_time)
+    # files_analyzed is the total number of files encountered in directory which is scanned
+    print('Files analyzed:', files_analyzed)
+    # files_processed is number of files which match the expected extensions for image files
+    print('Files processed:', files_processed)
+    print('Renames attempted:', renames_attempted)
+    print('Renames failed:', renames_failed, '({:.1%})'.format(renames_failed/renames_attempted))
+    print('Missing barcodes:', missing_barcodes, '({:.1%})'.format(missing_barcodes/files_analyzed))
+    print('Duration:', analysis_end_time - analysis_start_time)
+    if files_analyzed > 0:
+        print('Time per file:', (analysis_end_time - analysis_start_time) / files_analyzed)
+    print('Report written to:', log_file_path)
